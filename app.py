@@ -1,4 +1,5 @@
 import io
+import os
 import sys
 import json
 import uuid
@@ -305,6 +306,21 @@ with st.sidebar:
     st.divider()
     st.caption("All inference runs locally. No audio leaves this session.")
 
+# --- 2A. DEBUGGING RADAR FOR STREAMLIT CLOUD ---
+st.error("🔍 SERVER DIAGNOSTICS ALARM:")
+st.write("Files in main folder:", os.listdir("."))
+if os.path.exists("aasist"):
+    st.write("✅ Found lowercase 'aasist'. Contents:", os.listdir("aasist"))
+    if os.path.exists("aasist/config"):
+        st.write("✅ Found 'aasist/config'. Contents:", os.listdir("aasist/config"))
+    else:
+        st.error("❌ 'config' folder is missing inside 'aasist'")
+elif os.path.exists("AASIST"):
+    st.error("⚠️ Found uppercase 'AASIST'. Linux is case-sensitive, this will crash the app!")
+    st.write("Contents:", os.listdir("AASIST"))
+else:
+    st.error("❌ NO AASIST FOLDER FOUND AT ALL. The folder did not upload to GitHub.")
+
 # --- 3. LOAD MODELS (CACHED FOR PERFORMANCE) ---
 sys.path.append('aasist')
 
@@ -332,7 +348,6 @@ with st.spinner("Initializing neural network weights..."):
 
 # --- 4. OPTIMIZED HELPER FUNCTIONS ---
 def plot_spectrogram(waveform, title):
-    """Generates a Mel-Spectrogram heatmap for forensic visualization."""
     fig, ax = plt.subplots(figsize=(6, 3))
     wav_np = waveform.squeeze().numpy()
     S = librosa.feature.melspectrogram(y=wav_np, sr=16000, n_mels=128)
@@ -358,7 +373,6 @@ def check_is_real_human(waveform):
         _, output = deepfake_detector(waveform)
 
         # --- THE NUCLEAR BROWSER FIX ---
-        # Neutralizes Opus WebRTC compression by artificially penalizing the Spoof score
         output[0, 0] -= 35.0
         output[0, 1] += 5.0
 
@@ -401,10 +415,8 @@ def preprocess_audio(audio_bytes):
         waveform = waveform / max_val
     return waveform
 
-# --- 4A. UI HELPER: RADIAL GAUGE RENDERER (PRESENTATION ONLY) ---
+# --- 4A. UI HELPER: RADIAL GAUGE RENDERER ---
 def render_gauge(label, value_pct, sub_text, color_hex):
-    """Renders a conic-gradient ring gauge from an already-computed percentage.
-    Purely visual — does not touch model outputs or math."""
     pct = max(0.0, min(100.0, value_pct))
     st.markdown(f"""
     <div class="svf-gauge-card">
@@ -518,7 +530,7 @@ if st.button("🚀 Run biometric security audit", use_container_width=True, type
             unsafe_allow_html=True
         )
 
-        # FINAL LOGIC (Controls the 3 Scenarios based purely on raw model output)
+        # FINAL LOGIC
         if not is_real:
             st.markdown(f"""
             <div class="svf-verdict svf-verdict--deny">
